@@ -152,3 +152,16 @@ def average_distance(distances, beacons):
         })
 
     return res
+
+def add_point(center, size, color):
+    return dict(
+        type="circle",
+        xref="x",
+        yref="y",
+        fillcolor=color,
+        x0 = center[0] - size/2,
+        y0 = center[1] - size/2,
+        x1 = center[0] + size/2,
+        y1 = center[1] + size/2,
+        line=dict(width=0),
+    )

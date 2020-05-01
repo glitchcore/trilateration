@@ -44,26 +44,14 @@ def trilateration(distance_map):
         for cross in cross_set:
             CROSS_SIZE = 0.08
 
-            shapes.append(
-                dict(
-                    type="circle",
-                    xref="x",
-                    yref="y",
-                    fillcolor="#AA0000",
-                    x0 = cross[0] - CROSS_SIZE/2,
-                    y0 = cross[1] - CROSS_SIZE/2,
-                    x1 = cross[0] + CROSS_SIZE/2,
-                    y1 = cross[1] + CROSS_SIZE/2,
-                    line=dict(width=0),
-                )
-            )
+            shapes.append(add_point(cross, CROSS_SIZE, "#AA0000"))
 
-    triangles = []
+    results = []
+
     for cross_0 in crosses[0]:
         for cross_1 in crosses[1]:
             for cross_2 in crosses[2]:
-                triangles.append([cross_0, cross_1, cross_2])
-
+                # draw triangles
                 shapes.append(dict(
                     type="line",
                     x0=cross_0[0],
@@ -91,9 +79,50 @@ def trilateration(distance_map):
                     line=dict(color="RoyalBlue", width=1)
                 ))
 
+                triangle_center = [
+                    sum([cross_0[0], cross_1[0], cross_2[0]])/3.0,
+                    sum([cross_0[1], cross_1[1], cross_2[1]])/3.0
+                ]
 
+                triangle_r = max([
+                    math.sqrt((triangle_center[0] - cross_0[0])**2 + (triangle_center[1] - cross_0[1])**2),
+                    math.sqrt((triangle_center[0] - cross_1[0])**2 + (triangle_center[1] - cross_1[1])**2),
+                    math.sqrt((triangle_center[0] - cross_2[0])**2 + (triangle_center[1] - cross_2[1])**2)
+                ])
 
-    print(triangles)
+                shapes.append(
+                    dict(
+                        type="circle",
+                        xref="x",
+                        yref="y",
+                        x0 = triangle_center[0] - triangle_r,
+                        y0 = triangle_center[1] - triangle_r,
+                        x1 = triangle_center[0] + triangle_r,
+                        y1 = triangle_center[1] + triangle_r,
+                        line=dict(width=2, color="#AAAA00"),
+                    )
+                )
+
+                shapes.append(add_point(triangle_center, 0.05, "#0000FF"))
+
+                results.append([triangle_center[0], triangle_center[1], triangle_r])
+
+    result = sorted(results, key=lambda x: x[2])[0]
+
+    shapes.append(dict(
+        type="circle",
+        xref="x",
+        yref="y",
+        x0 = result[0] - result[2],
+        y0 = result[1] - result[2],
+        x1 = result[0] + result[2],
+        y1 = result[1] + result[2],
+        line=dict(width=4, color="#FF0000"),
+    ))
+
+    shapes.append(add_point(result[0:2], 0.1, "#FF0000"))
+
+    print(result)
 
 
 
