@@ -148,7 +148,10 @@ def average_distance(distances, beacons):
             "x": beacon_distance[1][0],
             "y": beacon_distance[1][1],
             "r": average,
-            "var": sum([(x - average)**2 for x in beacon_distance[0]])/float(len(beacon_distance[0]))
+            "var": math.sqrt(
+                sum([(x - average)**2 for x in beacon_distance[0]])/
+                float(len(beacon_distance[0]))
+            )
         })
 
     return res

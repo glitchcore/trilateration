@@ -1,6 +1,8 @@
 #! /usr/bin/python3
 
 import math
+import time
+
 from trilateration_utils import *
 
 import plotly.io as pio
@@ -13,6 +15,20 @@ shapes = []
 def trilateration(distance_map):
     for beacon in distance_map:
         r = beacon["r"]
+        var = beacon["var"]
+
+        shapes.append(
+            dict(
+                type="circle",
+                xref="x",
+                yref="y",
+                x0 = beacon["x"] - r,
+                y0 = beacon["y"] - r,
+                x1 = beacon["x"] + r,
+                y1 = beacon["y"] + r,
+                line=dict(width=var*200, color="rgba(127, 127, 127, 0.1)")
+            )
+        )
 
         shapes.append(
             dict(
@@ -39,12 +55,27 @@ def trilateration(distance_map):
             [distance_map[id[1]]["x"], distance_map[id[1]]["y"], distance_map[id[1]]["r"]]
         )
 
+        deviation = math.sqrt(distance_map[id[0]]["var"]**2 + distance_map[id[1]]["var"]**2)
+
+        if cross_set == []:
+            cross_set = [[
+                (
+                    distance_map[id[0]]["x"] * distance_map[id[1]]["r"] + 
+                    distance_map[id[1]]["x"] * distance_map[id[0]]["r"]
+                ) / (distance_map[id[0]]["r"] + distance_map[id[1]]["r"]),
+
+                (
+                    distance_map[id[0]]["y"] * distance_map[id[1]]["r"] + 
+                    distance_map[id[1]]["y"] * distance_map[id[0]]["r"]
+                ) / (distance_map[id[0]]["r"] + distance_map[id[1]]["r"])
+            ]]
+
+        cross_set = [[x[0], x[1], deviation] for x in cross_set]
+
         crosses.append(cross_set)
 
         for cross in cross_set:
-            CROSS_SIZE = 0.08
-
-            shapes.append(add_point(cross, CROSS_SIZE, "#AA0000"))
+            shapes.append(add_point(cross, 0.05, "#AA00AA"))
 
     results = []
 
@@ -85,9 +116,18 @@ def trilateration(distance_map):
                 ]
 
                 triangle_r = max([
-                    math.sqrt((triangle_center[0] - cross_0[0])**2 + (triangle_center[1] - cross_0[1])**2),
-                    math.sqrt((triangle_center[0] - cross_1[0])**2 + (triangle_center[1] - cross_1[1])**2),
-                    math.sqrt((triangle_center[0] - cross_2[0])**2 + (triangle_center[1] - cross_2[1])**2)
+                    math.sqrt(
+                        (triangle_center[0] - cross_0[0])**2 +
+                        (triangle_center[1] - cross_0[1])**2
+                    ) + cross_0[2],
+                    math.sqrt(
+                        (triangle_center[0] - cross_1[0])**2 +
+                        (triangle_center[1] - cross_1[1])**2
+                    ) + cross_1[2],
+                    math.sqrt(
+                        (triangle_center[0] - cross_2[0])**2 +
+                        (triangle_center[1] - cross_2[1])**2
+                    ) + cross_2[2]
                 ])
 
                 shapes.append(
@@ -99,13 +139,46 @@ def trilateration(distance_map):
                         y0 = triangle_center[1] - triangle_r,
                         x1 = triangle_center[0] + triangle_r,
                         y1 = triangle_center[1] + triangle_r,
-                        line=dict(width=2, color="#AAAA00"),
+                        line=dict(width=1, color="#AAAA00"),
                     )
                 )
 
                 shapes.append(add_point(triangle_center, 0.05, "#0000FF"))
 
                 results.append([triangle_center[0], triangle_center[1], triangle_r])
+
+    # print(results)
+
+    if results == []:
+        return None
+
+    result = sorted(results, key=lambda x: x[2])[0]
+
+    shapes.append(dict(
+        type="circle",
+        xref="x",
+        yref="y",
+        x0 = result[0] - result[2],
+        y0 = result[1] - result[2],
+        x1 = result[0] + result[2],
+        y1 = result[1] + result[2],
+        line=dict(width=3, color="#FF9999"),
+    ))
+
+    shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
+
+    return result
+
+
+
+def multilateration(distance_map, room):
+
+    results = [
+        trilateration([distance_map[i] for i in [1,2,3]]),
+        trilateration([distance_map[i] for i in [0,2,3]]),
+        trilateration([distance_map[i] for i in [0,1,3]]),
+        trilateration([distance_map[i] for i in [0,1,2]])
+    ]
 
     result = sorted(results, key=lambda x: x[2])[0]
 
@@ -122,12 +195,7 @@ def trilateration(distance_map):
 
     shapes.append(add_point(result[0:2], 0.1, "#FF0000"))
 
-    print(result)
-
-
-
-def multilateration(distance_map, room):
-    trilateration([distance_map[i] for i in [3,0,2]])
+    return result
 
 beacons = [
     [0.25, 2.45],
@@ -181,13 +249,20 @@ shapes.append(
     )
 )
 
-measurements = parse_measurements("full_measurement_logs_raw", 3)
+measurements = parse_measurements("full_measurement_logs_raw", 7)
 
 raw_distance_maps = [
     [rssi2distance(rssi) for rssi in measurement["rssi"]] for measurement in measurements
 ]
 
-distance_map = average_distance(raw_distance_maps, beacons)
+measurement_id = 11
+
+distance_map = average_distance(
+    raw_distance_maps[:],
+    beacons
+)
+
+print(distance_map)
 
 multilateration(distance_map, [3.4, 4.6])
 
