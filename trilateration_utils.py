@@ -61,8 +61,8 @@ def parse_measurements(filename, id):
                     rows.append(row)
 
         for x, i in enumerate([x[-1][0] for x in measurements]):
-            pass
-            # print(x, i)
+            # pass
+            print(x, i)
 
     measurement = measurements[id]
     measurements = [{"time": x[0], "rssi": [x[1], x[2], x[3], x[4]], "x": x[5], "y": x[5]} for x in measurement]
