@@ -49,25 +49,22 @@ def trilateration(distance_map):
     crosses = []
 
     for id in crosses_id:
+
+        a = distance_map[id[0]]
+        b = distance_map[id[1]]
         
+        # cross for average
         cross_set = circle_cross(
-            [distance_map[id[0]]["x"], distance_map[id[0]]["y"], distance_map[id[0]]["r"]],
-            [distance_map[id[1]]["x"], distance_map[id[1]]["y"], distance_map[id[1]]["r"]]
+            [a["x"], a["y"], a["r"]],
+            [b["x"], b["y"], b["r"]]
         )
 
-        deviation = math.sqrt(distance_map[id[0]]["var"]**2 + distance_map[id[1]]["var"]**2)
+        deviation = math.sqrt(a["var"]**2 + b["var"]**2)
 
         if cross_set == []:
             cross_set = [[
-                (
-                    distance_map[id[0]]["x"] * distance_map[id[1]]["r"] + 
-                    distance_map[id[1]]["x"] * distance_map[id[0]]["r"]
-                ) / (distance_map[id[0]]["r"] + distance_map[id[1]]["r"]),
-
-                (
-                    distance_map[id[0]]["y"] * distance_map[id[1]]["r"] + 
-                    distance_map[id[1]]["y"] * distance_map[id[0]]["r"]
-                ) / (distance_map[id[0]]["r"] + distance_map[id[1]]["r"])
+                (a["x"] * b["r"] + b["x"] * a["r"]) / (a["r"] + b["r"]),
+                (a["y"] * b["r"] + b["y"] * a["r"]) / (a["r"] + b["r"])
             ]]
 
         cross_set = [[x[0], x[1], deviation] for x in cross_set]
@@ -76,6 +73,19 @@ def trilateration(distance_map):
 
         for cross in cross_set:
             shapes.append(add_point(cross, 0.05, "#AA00AA"))
+
+            shapes.append(
+                dict(
+                    type="circle",
+                    xref="x",
+                    yref="y",
+                    x0 = cross[0] - cross[2],
+                    y0 = cross[1] - cross[2],
+                    x1 = cross[0] + cross[2],
+                    y1 = cross[1] + cross[2],
+                    line=dict(width=1, color="#AA00AA"),
+                )
+            )
 
     results = []
 
@@ -249,13 +259,13 @@ shapes.append(
     )
 )
 
-measurements = parse_measurements("full_measurement_logs_raw", 7)
+measurements = parse_measurements("full_measurement_logs_raw", 3)
 
 raw_distance_maps = [
     [rssi2distance(rssi) for rssi in measurement["rssi"]] for measurement in measurements
 ]
 
-measurement_id = 11
+measurement_id = 2
 
 distance_map = average_distance(
     raw_distance_maps[:],
