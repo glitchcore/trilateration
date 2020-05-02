@@ -11,7 +11,8 @@ import plotly.graph_objects as go
 fig = go.Figure()
 shapes = []
 
-tilateration_debug = False
+tilateration_debug = True
+beacon_debug = True
 
 def trilateration(distance_map, room):
     for beacon in distance_map:
@@ -19,7 +20,7 @@ def trilateration(distance_map, room):
         var = beacon["var"]
 
         # beacon distance var circle
-        if False:
+        if beacon_debug:
             shapes.append(
                 dict(
                     type="circle",
@@ -183,7 +184,7 @@ def trilateration(distance_map, room):
             y0 = result[1] - result[2],
             x1 = result[0] + result[2],
             y1 = result[1] + result[2],
-            line=dict(width=3, color="#FF9999"),
+            line=dict(width=2, color="#FF9999"),
         ))
 
         shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
@@ -257,7 +258,7 @@ shapes.append(
     )
 )
 
-measurement_id = 4
+measurement_id = 9
 
 true_position = [
     [0, 0], # 0 10:12:47
@@ -305,10 +306,17 @@ shapes.append(dict(
 
 AVERAGING_STEP = 5
 
-for i in range(0, len(raw_distance_maps), AVERAGING_STEP):
+raw_distance_maps = [
+    raw_distance_maps[i:i+AVERAGING_STEP]
+    for i in range(0, len(raw_distance_maps), AVERAGING_STEP)
+]
+
+raw_distance_maps = raw_distance_maps[6:7]
+
+for raw_distance_map in raw_distance_maps:
     # print("draw", i)
     distance_map = average_distance(
-        raw_distance_maps[i:i+AVERAGING_STEP],
+        raw_distance_map,
         beacons
     )
     
