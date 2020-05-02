@@ -11,12 +11,14 @@ import plotly.graph_objects as go
 fig = go.Figure()
 shapes = []
 
+tilateration_debug = False
 
 def trilateration(distance_map):
     for beacon in distance_map:
         r = beacon["r"]
         var = beacon["var"]
 
+        # beacon distance var circle
         shapes.append(
             dict(
                 type="circle",
@@ -30,6 +32,7 @@ def trilateration(distance_map):
             )
         )
 
+        # beacon distance circle
         shapes.append(
             dict(
                 type="circle",
@@ -71,21 +74,23 @@ def trilateration(distance_map):
 
         crosses.append(cross_set)
 
-        for cross in cross_set:
-            shapes.append(add_point(cross, 0.05, "#AA00AA"))
+        # draw crosses and var bound
+        if tilateration_debug:
+            for cross in cross_set:
+                shapes.append(add_point(cross, 0.05, "#AA00AA"))
 
-            shapes.append(
-                dict(
-                    type="circle",
-                    xref="x",
-                    yref="y",
-                    x0 = cross[0] - cross[2],
-                    y0 = cross[1] - cross[2],
-                    x1 = cross[0] + cross[2],
-                    y1 = cross[1] + cross[2],
-                    line=dict(width=1, color="#AA00AA"),
+                shapes.append(
+                    dict(
+                        type="circle",
+                        xref="x",
+                        yref="y",
+                        x0 = cross[0] - cross[2],
+                        y0 = cross[1] - cross[2],
+                        x1 = cross[0] + cross[2],
+                        y1 = cross[1] + cross[2],
+                        line=dict(width=1, color="#AA00AA"),
+                    )
                 )
-            )
 
     results = []
 
@@ -93,32 +98,33 @@ def trilateration(distance_map):
         for cross_1 in crosses[1]:
             for cross_2 in crosses[2]:
                 # draw triangles
-                shapes.append(dict(
-                    type="line",
-                    x0=cross_0[0],
-                    y0=cross_0[1],
-                    x1=cross_1[0],
-                    y1=cross_1[1],
-                    line=dict(color="RoyalBlue", width=1)
-                ))
+                if tilateration_debug:
+                    shapes.append(dict(
+                        type="line",
+                        x0=cross_0[0],
+                        y0=cross_0[1],
+                        x1=cross_1[0],
+                        y1=cross_1[1],
+                        line=dict(color="RoyalBlue", width=1)
+                    ))
 
-                shapes.append(dict(
-                    type="line",
-                    x0=cross_1[0],
-                    y0=cross_1[1],
-                    x1=cross_2[0],
-                    y1=cross_2[1],
-                    line=dict(color="RoyalBlue", width=1)
-                ))
+                    shapes.append(dict(
+                        type="line",
+                        x0=cross_1[0],
+                        y0=cross_1[1],
+                        x1=cross_2[0],
+                        y1=cross_2[1],
+                        line=dict(color="RoyalBlue", width=1)
+                    ))
 
-                shapes.append(dict(
-                    type="line",
-                    x0=cross_2[0],
-                    y0=cross_2[1],
-                    x1=cross_0[0],
-                    y1=cross_0[1],
-                    line=dict(color="RoyalBlue", width=1)
-                ))
+                    shapes.append(dict(
+                        type="line",
+                        x0=cross_2[0],
+                        y0=cross_2[1],
+                        x1=cross_0[0],
+                        y1=cross_0[1],
+                        line=dict(color="RoyalBlue", width=1)
+                    ))
 
                 triangle_center = [
                     sum([cross_0[0], cross_1[0], cross_2[0]])/3.0,
@@ -140,20 +146,21 @@ def trilateration(distance_map):
                     ) + cross_2[2]
                 ])
 
-                shapes.append(
-                    dict(
-                        type="circle",
-                        xref="x",
-                        yref="y",
-                        x0 = triangle_center[0] - triangle_r,
-                        y0 = triangle_center[1] - triangle_r,
-                        x1 = triangle_center[0] + triangle_r,
-                        y1 = triangle_center[1] + triangle_r,
-                        line=dict(width=1, color="#AAAA00"),
+                if tilateration_debug:
+                    shapes.append(
+                        dict(
+                            type="circle",
+                            xref="x",
+                            yref="y",
+                            x0 = triangle_center[0] - triangle_r,
+                            y0 = triangle_center[1] - triangle_r,
+                            x1 = triangle_center[0] + triangle_r,
+                            y1 = triangle_center[1] + triangle_r,
+                            line=dict(width=1, color="#AAAA00"),
+                        )
                     )
-                )
 
-                shapes.append(add_point(triangle_center, 0.05, "#0000FF"))
+                    shapes.append(add_point(triangle_center, 0.05, "#0000FF"))
 
                 results.append([triangle_center[0], triangle_center[1], triangle_r])
 
@@ -164,18 +171,19 @@ def trilateration(distance_map):
 
     result = sorted(results, key=lambda x: x[2])[0]
 
-    shapes.append(dict(
-        type="circle",
-        xref="x",
-        yref="y",
-        x0 = result[0] - result[2],
-        y0 = result[1] - result[2],
-        x1 = result[0] + result[2],
-        y1 = result[1] + result[2],
-        line=dict(width=3, color="#FF9999"),
-    ))
+    if tilateration_debug:
+        shapes.append(dict(
+            type="circle",
+            xref="x",
+            yref="y",
+            x0 = result[0] - result[2],
+            y0 = result[1] - result[2],
+            x1 = result[0] + result[2],
+            y1 = result[1] + result[2],
+            line=dict(width=3, color="#FF9999"),
+        ))
 
-    shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
+        shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
 
     return result
 
