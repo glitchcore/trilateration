@@ -101,8 +101,8 @@ def circle_cross(oCircle1, oCircle2):
         if D > 0:
             obj["pos1"] = [0, 0]
             obj["pos2"] = [0, 0]
-            obj["pos1"][0] = +Math.sqrt(D)
-            obj["pos2"][0] = -Math.sqrt(D)
+            obj["pos1"][0] = +math.sqrt(D)
+            obj["pos2"][0] = -math.sqrt(D)
             obj["pos1"][1] = c / oPos2[1]
             obj["pos2"][1] = c / oPos2[1]
         elif D == 0:

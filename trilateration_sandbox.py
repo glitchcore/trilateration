@@ -4,214 +4,67 @@ import math
 import time
 
 from trilateration_utils import *
+import resero_multilat
+import gradient_multilat
 
 import plotly.io as pio
 import plotly.graph_objects as go
 
-fig = go.Figure()
-shapes = []
-
-tilateration_debug = True
 beacon_debug = True
 
-def trilateration(distance_map, room):
-    for beacon in distance_map:
-        r = beacon["r"]
-        var = beacon["var"]
 
-        # beacon distance var circle
-        if beacon_debug:
-            shapes.append(
-                dict(
-                    type="circle",
-                    xref="x",
-                    yref="y",
-                    x0 = beacon["x"] - r,
-                    y0 = beacon["y"] - r,
-                    x1 = beacon["x"] + r,
-                    y1 = beacon["y"] + r,
-                    line=dict(width=var*200, color="rgba(127, 127, 127, 0.1)")
-                )
-            )
-
-            # beacon distance circle
-            shapes.append(
-                dict(
-                    type="circle",
-                    xref="x",
-                    yref="y",
-                    x0 = beacon["x"] - r,
-                    y0 = beacon["y"] - r,
-                    x1 = beacon["x"] + r,
-                    y1 = beacon["y"] + r,
-                    line=dict(width=2),
-                )
-            )
-
-    # circle crosses
-    crosses_id = [[0, 1], [1, 2], [0, 2]]
-
-    crosses = []
-
-    for id in crosses_id:
-
-        a = distance_map[id[0]]
-        b = distance_map[id[1]]
-        
-        # cross for average
-        cross_set = circle_cross(
-            [a["x"], a["y"], a["r"]],
-            [b["x"], b["y"], b["r"]]
-        )
-
-        deviation = math.sqrt(a["var"]**2 + b["var"]**2) * 1.4
-
-        if cross_set == []:
-            cross_set = [[
-                (a["x"] * b["r"] + b["x"] * a["r"]) / (a["r"] + b["r"]),
-                (a["y"] * b["r"] + b["y"] * a["r"]) / (a["r"] + b["r"])
-            ]]
-
-        cross_set = [[x[0], x[1], deviation] for x in cross_set]
-
-        crosses.append(cross_set)
-
-        # draw crosses and var bound
-        if tilateration_debug:
-            for cross in cross_set:
-                shapes.append(add_point(cross, 0.05, "#AA00AA"))
-
-                shapes.append(
-                    dict(
-                        type="circle",
-                        xref="x",
-                        yref="y",
-                        x0 = cross[0] - cross[2],
-                        y0 = cross[1] - cross[2],
-                        x1 = cross[0] + cross[2],
-                        y1 = cross[1] + cross[2],
-                        line=dict(width=1, color="#AA00AA"),
-                    )
-                )
-
-    results = []
-
-    for cross_0 in crosses[0]:
-        for cross_1 in crosses[1]:
-            for cross_2 in crosses[2]:
-                # draw triangles
-                if tilateration_debug:
-                    shapes.append(dict(
-                        type="line",
-                        x0=cross_0[0],
-                        y0=cross_0[1],
-                        x1=cross_1[0],
-                        y1=cross_1[1],
-                        line=dict(color="RoyalBlue", width=1)
-                    ))
-
-                    shapes.append(dict(
-                        type="line",
-                        x0=cross_1[0],
-                        y0=cross_1[1],
-                        x1=cross_2[0],
-                        y1=cross_2[1],
-                        line=dict(color="RoyalBlue", width=1)
-                    ))
-
-                    shapes.append(dict(
-                        type="line",
-                        x0=cross_2[0],
-                        y0=cross_2[1],
-                        x1=cross_0[0],
-                        y1=cross_0[1],
-                        line=dict(color="RoyalBlue", width=1)
-                    ))
-
-                triangle_center = [
-                    sum([cross_0[0], cross_1[0], cross_2[0]])/3.0,
-                    sum([cross_0[1], cross_1[1], cross_2[1]])/3.0
-                ]
-
-                triangle_r = max([
-                    math.sqrt(
-                        (triangle_center[0] - cross_0[0])**2 +
-                        (triangle_center[1] - cross_0[1])**2
-                    ) + cross_0[2],
-                    math.sqrt(
-                        (triangle_center[0] - cross_1[0])**2 +
-                        (triangle_center[1] - cross_1[1])**2
-                    ) + cross_1[2],
-                    math.sqrt(
-                        (triangle_center[0] - cross_2[0])**2 +
-                        (triangle_center[1] - cross_2[1])**2
-                    ) + cross_2[2]
-                ])
-
-                if tilateration_debug:
-                    shapes.append(
-                        dict(
-                            type="circle",
-                            xref="x",
-                            yref="y",
-                            x0 = triangle_center[0] - triangle_r,
-                            y0 = triangle_center[1] - triangle_r,
-                            x1 = triangle_center[0] + triangle_r,
-                            y1 = triangle_center[1] + triangle_r,
-                            line=dict(width=1, color="#AAAA00"),
-                        )
-                    )
-
-                    shapes.append(add_point(triangle_center, 0.05, "#0000FF"))
-
-                if triangle_center[0] > 0.0 and triangle_center[0] < room[0]:
-                    if triangle_center[1] > 0.0 and triangle_center[1] < room[1]:
-                        results.append([triangle_center[0], triangle_center[1], triangle_r])
-
-    # print(results)
-
-    if results == []:
-        return [room[0]/2, room[1]/2, max(room[0], room[1])]
-
-    result = sorted(results, key=lambda x: x[2])[0]
-
-    if tilateration_debug:
-        shapes.append(dict(
-            type="circle",
-            xref="x",
-            yref="y",
-            x0 = result[0] - result[2],
-            y0 = result[1] - result[2],
-            x1 = result[0] + result[2],
-            y1 = result[1] + result[2],
-            line=dict(width=2, color="#FF9999"),
-        ))
-
-        shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
-
-    return result
-
-
-
-def multilateration(distance_map, room):
-
-    results = [
-        trilateration([distance_map[i] for i in [1,2,3]], room),
-        trilateration([distance_map[i] for i in [0,2,3]], room),
-        trilateration([distance_map[i] for i in [0,1,3]], room),
-        trilateration([distance_map[i] for i in [0,1,2]], room)
-    ]
-
-    result = sorted(results, key=lambda x: x[2])[0]
-
-    return result
-
+# main room
 beacons = [
     [0.25, 2.45],
     [1.1, 4.6],
     [2.8, 4.6],
     [3.1, 0.8]
 ]
+
+'''
+# bedroom beacons
+beacons = [
+    [0.1, 0.1],
+    [2.4, 4.8],
+    [0.1, 4.8],
+    [2.7, 0.7]
+]
+'''
+
+
+# main room
+true_position = [
+    [0, 0], # 0 10:12:47
+    [0, 0], # 1 10:18:24
+    [0, 0], # 2 10:21:24
+    [1.7, 2.3], # 3 10:32:49
+    [1.5, 0.0], # 4 10:37:40
+    [1.5, 4.0], # 5 10:47:49
+    [0.5, 4.0], # 6 10:52:49
+    [0, 0], # 7 10:54:28
+    [0, 0], # 8 10:59:03
+    [2.9, 1.5], # 9 11:07:13
+    [0.8, 1.7], # 10 11:15:02
+    [3.2, 4.4] # 11 11:20:14
+]
+
+'''
+# bedroom
+true_position = [
+    [1.5, 4.4], # 0
+    [0.3, 2.5], # 1
+    [1.6, 0.8], # 2
+    [2.4, 2,5], # 3
+    [1.4, 2.5], # 4
+    [1.5, 4.4]  # 5
+]
+'''
+
+room = [3.4, 4.6]
+# room = [2.8, 4.9]
+
+fig = go.Figure()
+shapes = []
 
 fig.update_xaxes(range=[-1, 5], zeroline=False)
 fig.update_yaxes(range=[-1, 5])
@@ -249,8 +102,8 @@ shapes.append(
         yref="y",
         x0=0,
         y0=0,
-        x1=3.4,
-        y1=4.6,
+        x1=room[0],
+        y1=room[1],
         line=dict(
             color="#AAAAFF",
             width=1,
@@ -258,24 +111,11 @@ shapes.append(
     )
 )
 
-measurement_id = 9
 
-true_position = [
-    [0, 0], # 0 10:12:47
-    [0, 0], # 1 10:18:24
-    [0, 0], # 2 10:21:24
-    [1.7, 2.3], # 3 10:32:49
-    [1.5, 0.0], # 4 10:37:40
-    [1.5, 4.0], # 5 10:47:49
-    [0.5, 4.0], # 6 10:52:49
-    [0, 0], # 7 10:54:28
-    [0, 0], # 8 10:59:03
-    [2.9, 1.5], # 9 11:07:13
-    [0.8, 1.7], # 10 11:15:02
-    [3.2, 4.4] # 11 11:20:14
-]
+measurement_id = 3
 
 measurements = parse_measurements("full_measurement_logs_raw", measurement_id)
+# measurements = parse_measurements("full_measurement_logs_bedroom", measurement_id)
 
 raw_distance_maps = [
     [rssi2distance(rssi) for rssi in measurement["rssi"]] for measurement in measurements
@@ -306,12 +146,14 @@ shapes.append(dict(
 
 AVERAGING_STEP = 5
 
+print(len(raw_distance_maps))
+
 raw_distance_maps = [
     raw_distance_maps[i:i+AVERAGING_STEP]
     for i in range(0, len(raw_distance_maps), AVERAGING_STEP)
 ]
 
-raw_distance_maps = raw_distance_maps[6:7]
+raw_distance_maps = raw_distance_maps[1:2]
 
 for raw_distance_map in raw_distance_maps:
     # print("draw", i)
@@ -319,30 +161,70 @@ for raw_distance_map in raw_distance_maps:
         raw_distance_map,
         beacons
     )
-    
-    result = multilateration(distance_map, [3.4, 4.6])
 
-    error_distance = math.sqrt(
+    for beacon in distance_map:
+        r = beacon["r"]
+        var = beacon["var"]
+
+        # beacon distance var circle
+        if beacon_debug:
+            shapes.append(
+                dict(
+                    type="circle",
+                    xref="x",
+                    yref="y",
+                    x0 = beacon["x"] - r,
+                    y0 = beacon["y"] - r,
+                    x1 = beacon["x"] + r,
+                    y1 = beacon["y"] + r,
+                    line=dict(width=var*200, color="rgba(127, 127, 127, 0.1)")
+                )
+            )
+
+            # beacon distance circle
+            shapes.append(
+                dict(
+                    type="circle",
+                    xref="x",
+                    yref="y",
+                    x0 = beacon["x"] - r,
+                    y0 = beacon["y"] - r,
+                    x1 = beacon["x"] + r,
+                    y1 = beacon["y"] + r,
+                    line=dict(width=2),
+                )
+            )
+    
+    results = [
+        resero_multilat.multilateration(distance_map, room, shapes),
+        gradient_multilat.multilateration(distance_map, room, shapes)
+    ]
+
+    error_distances = [math.sqrt(
         (result[0] - true_position[measurement_id][0])**2 +
         (result[1] - true_position[measurement_id][1])**2
-    )
+    ) for result in results]
 
-    bound_color = "#00FF00" if error_distance < result[2] else "#FF0000"
+    bound_colors = [
+        ("#00FF00" if error_distances[0] < results[0][2] else "#FF0000"),
+        ("#00AA00" if error_distances[1] < results[1][2] else "#AA0000"),
+    ]
 
-    # draw bounds
-    if True:
-        shapes.append(dict(
-            type="circle",
-            xref="x",
-            yref="y",
-            x0 = result[0] - result[2],
-            y0 = result[1] - result[2],
-            x1 = result[0] + result[2],
-            y1 = result[1] + result[2],
-            line=dict(width=1, color=bound_color),
-        ))
+    for result in zip(results, bound_colors):
+        # draw bounds
+        if True:
+            shapes.append(dict(
+                type="circle",
+                xref="x",
+                yref="y",
+                x0 = result[0][0] - result[0][2],
+                y0 = result[0][1] - result[0][2],
+                x1 = result[0][0] + result[0][2],
+                y1 = result[0][1] + result[0][2],
+                line=dict(width=1, color=result[1]),
+            ))
 
-    shapes.append(add_point(result[0:2], 0.1, bound_color))
+        shapes.append(add_point(result[0][0:2], 0.1, result[1]))
 
 
 fig.update_layout(shapes=shapes)
