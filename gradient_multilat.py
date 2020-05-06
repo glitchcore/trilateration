@@ -3,13 +3,18 @@ import math
 import plotly.io as pio
 import plotly.graph_objects as go
 
+from trilateration_utils import *
+
 import numpy as np
 import tensorflow as tf
 
-def multilateration(distance_map, room, shapes):
-    beacons_x = [distance_map[id]["x"] for id in [0, 2, 3]]
-    beacons_y = [distance_map[id]["y"] for id in [0, 2, 3]]
-    beacons_r = [distance_map[id]["r"] for id in [0, 2, 3]]
+tilateration_debug = False
+
+def trilateration(distance_map, room, shapes):
+    beacons_x = [distance_map_item["x"] for distance_map_item in distance_map]
+    beacons_y = [distance_map_item["y"] for distance_map_item in distance_map]
+    beacons_r = [distance_map_item["r"] for distance_map_item in distance_map]
+    beacons_var = [distance_map_item["var"] for distance_map_item in distance_map]
 
     x = tf.Variable([0], dtype=tf.float32)
     y = tf.Variable([0], dtype=tf.float32)
@@ -26,7 +31,7 @@ def multilateration(distance_map, room, shapes):
     learning_rate = 0.001
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
-    n_iter = 1000
+    n_iter = 100
     # errors = []
 
     err = []
@@ -39,11 +44,10 @@ def multilateration(distance_map, room, shapes):
         })
 
         # errors.append(err)
-        if sum(err) < 0.05:
-            print(sum(err))
+        avg_error = (sum(err) / float(len(err))) ** 0.5
+        if avg_error < 0.2:
+            # print(sum(err))
             break
-
-    print(sum(err))
 
     
     x, y, = sess.run(
@@ -53,6 +57,40 @@ def multilateration(distance_map, room, shapes):
             R: beacons_r
         })
 
-    print(x, y)
+    # print(x, y)
 
-    return [x[0], y[0], sum(err)**0.5]
+    avg_error = (sum(err) / float(len(err))) ** 0.5
+
+    avg_error += max(beacons_var)
+
+    result = [x[0], y[0], avg_error]
+
+    if tilateration_debug:
+        shapes.append(dict(
+            type="circle",
+            xref="x",
+            yref="y",
+            x0 = result[0] - result[2],
+            y0 = result[1] - result[2],
+            x1 = result[0] + result[2],
+            y1 = result[1] + result[2],
+            line=dict(width=2, color="#FF9999"),
+        ))
+
+        shapes.append(add_point(result[0:2], 0.05, "#FF9999"))
+
+
+    return result
+
+def multilateration(distance_map, room, shapes):
+
+    results = [
+        trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
+        trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
+        trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
+        trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
+    ]
+
+    result = sorted(results, key=lambda x: x[2])[0]
+
+    return result
