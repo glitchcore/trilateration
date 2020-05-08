@@ -10,6 +10,8 @@ import tensorflow as tf
 
 tilateration_debug = False
 
+SET_SIZE = 4
+
 def trilateration(distance_map, room, shapes):
     beacons_x = [distance_map_item["x"] for distance_map_item in distance_map]
     beacons_y = [distance_map_item["y"] for distance_map_item in distance_map]
@@ -19,9 +21,9 @@ def trilateration(distance_map, room, shapes):
     x = tf.Variable([0], dtype=tf.float32)
     y = tf.Variable([0], dtype=tf.float32)
 
-    X = tf.placeholder(tf.float32, [3, ])
-    Y = tf.placeholder(tf.float32, [3, ])
-    R = tf.placeholder(tf.float32, [3, ])
+    X = tf.placeholder(tf.float32, [SET_SIZE, ])
+    Y = tf.placeholder(tf.float32, [SET_SIZE, ])
+    R = tf.placeholder(tf.float32, [SET_SIZE, ])
 
     cost = ((x - X) ** 2 + (y - Y) ** 2 - R ** 2) ** 2
 
@@ -84,13 +86,16 @@ def trilateration(distance_map, room, shapes):
 
 def multilateration(distance_map, room, shapes):
 
-    results = [
-        trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
-    ]
+    if SET_SIZE == 3:
+        results = [
+            trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
+        ]
 
-    result = sorted(results, key=lambda x: x[2])[0]
-
+        result = sorted(results, key=lambda x: x[2])[0]
+    else:
+        result = trilateration(distance_map, room, shapes)
+    
     return result

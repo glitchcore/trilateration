@@ -67,11 +67,11 @@ def parse_measurements(filename, id):
                     rows.append(row)
 
         for x, i in enumerate([x[-1][0] for x in measurements]):
-            # pass
-            print(x, i)
+            pass
+            # print(x, i)
 
     measurement = measurements[id]
-    measurements = [{"time": x[0], "rssi": [x[1], x[2], x[3], x[4]], "x": x[5], "y": x[5]} for x in measurement]
+    measurements = [{"time": x[0], "rssi": [x[1], x[2], x[3], x[4]], "x": x[5], "y": x[6]} for x in measurement]
 
     return measurements
 
@@ -246,6 +246,11 @@ def get_measurement_data(measurement_id, beacons, AVERAGING_STEP = 5):
         for i in range(0, len(raw_distance_maps), AVERAGING_STEP)
     ]
 
+    measurements = [
+        measurements[i:i+AVERAGING_STEP]
+        for i in range(0, len(measurements), AVERAGING_STEP)
+    ]
+
     distance_maps = [
         average_distance(
             raw_distance_map,
@@ -253,7 +258,7 @@ def get_measurement_data(measurement_id, beacons, AVERAGING_STEP = 5):
         ) for raw_distance_map in raw_distance_maps
     ]
 
-    return distance_maps
+    return distance_maps, measurements
 
 '''
 beacons: [[x, y]]
@@ -342,3 +347,20 @@ def check_result(result, true_position, colors):
     result.append(bound_color)
 
     return result
+
+def print_result_values(results, true_position):
+    predicted_error = sum([
+        result[2] for result in results
+    ])/float(len(results))
+
+    measured_error = (sum([
+        (result[0] - true_position[0])**2 +
+        (result[1] - true_position[1])**2
+    for result in results])/float(len(results))) ** 0.5
+
+    max_error = max([
+        math.sqrt((result[0] - true_position[0])**2 +
+        (result[1] - true_position[1])**2) - result[2]
+    for result in results])
+
+    print(predicted_error, ",", measured_error, ",", max_error, ",", end="")

@@ -68,21 +68,31 @@ def main():
     room = main_room
     beacons = main_room_beacons
     true_positions = main_room_positions
+    # room = bedroom
+    # beacons = bedroom_beacons
+    # true_positions = bedroom_positions
 
     shapes = draw_env(beacons, room, shapes=shapes)
 
     for measurement_id in main_room_ids:
+        true_position = true_positions[measurement_id]
+
+        print(measurement_id, ",", end="")
+        print(true_position[0], ",", true_position[1], ",", end="")
+
         measurement_shapes = shapes.copy()
         # get all distance maps averaged sets
-        distance_maps = get_measurement_data(measurement_id, beacons)[:]
-
-        resero_shapes = measurement_shapes.copy()
+        distance_maps, measurements = get_measurement_data(measurement_id, beacons)[:]
 
         for distance_map in distance_maps:
             if beacon_debug:
                 measurement_shapes = draw_distance_map(distance_map, measurement_shapes)
 
+        '''
         resero_shapes = measurement_shapes.copy()
+
+        resero_results = []
+
         for distance_map in distance_maps:
             result = resero_multilat.multilateration(distance_map, room, resero_shapes)
             result = check_result(result, true_positions[measurement_id], ["#00FF00", "#FF0000"])
@@ -92,9 +102,75 @@ def main():
                 beacons, 
                 resero_shapes
             )
+
+            resero_results.append(result)
+
+        print_result_values(resero_results, true_position)
         
-        plot_shapes(str(measurement_id) + "_0", beacons, resero_shapes)  
+        plot_shapes(str(measurement_id) + "_0", beacons, resero_shapes)
+        '''
+
+        '''
+        # gradient result
+        gradient_shapes = measurement_shapes.copy()
+
+        gradient_results = []
+
+        for distance_map in distance_maps:
+            result = gradient_multilat.multilateration(distance_map, room, gradient_shapes)
+            result = check_result(result, true_positions[measurement_id], ["#00AA00", "#AA0000"])
+            gradient_shapes = draw_result(
+                result,
+                true_positions[measurement_id], 
+                beacons, 
+                gradient_shapes
+            )
+
+            gradient_results.append(result)
+
+        print_result_values(gradient_results, true_position)
         
-        # ("#00AA00" if error_distances[1] < result[2] else "#AA0000"),
+        plot_shapes(str(measurement_id) + "_1", beacons, gradient_shapes)
+
+        print()
+        '''
+
+        npm_shapes = measurement_shapes.copy()
+
+        npm_results = []
+
+        for measurement_set in measurements:
+            # print(measurement_set)
+            x = sum([x["x"] for x in measurement_set])/float(len(measurement_set))
+            y = sum([y["y"] for y in measurement_set])/float(len(measurement_set))
+
+
+
+            avg = (
+                sum([
+                    ((item["x"] - x) ** 2 + (item["y"] - y) ** 2)
+                    for item in measurement_set
+                ])/float(len(measurement_set))
+            ) ** 0.5
+
+            # print(x, y, avg)
+
+            result = [x, y, avg * 5.0]
+            result = check_result(result, true_positions[measurement_id], ["#00FF00", "#FF0000"])
+            resero_shapes = draw_result(
+                result,
+                true_positions[measurement_id], 
+                beacons, 
+                npm_shapes
+            )
+
+            npm_results.append(result)
+
+        print_result_values(npm_results, true_position)
+
+        plot_shapes(str(measurement_id) + "_2", beacons, npm_shapes)
+
+        print()
+
 
 main()
