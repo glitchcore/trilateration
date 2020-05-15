@@ -1,7 +1,7 @@
 import math
 import time
 
-from trilateration_utils import *
+from .trilateration_utils import *
 
 import plotly.io as pio
 import plotly.graph_objects as go
@@ -26,7 +26,7 @@ def trilateration(distance_map, room, shapes):
             [b["x"], b["y"], b["r"]]
         )
 
-        deviation = math.sqrt(a["var"]**2 + b["var"]**2) * 1.4
+        deviation = math.sqrt(a["var"]**2 + b["var"]**2) * 0.5
 
         if cross_set == []:
             cross_set = [[
@@ -155,15 +155,43 @@ def trilateration(distance_map, room, shapes):
 
 
 
-def multilateration(distance_map, room, shapes):
+def multilateration(distance_map, room, shapes=[]):
+    if len(distance_map) == 4:
+        results = [
+            trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
+            trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
+        ]
 
-    results = [
-        trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
-        trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
-    ]
+        result = sorted(results, key=lambda x: x[2])[0]
 
-    result = sorted(results, key=lambda x: x[2])[0]
+        return result
 
-    return result
+    if len(distance_map) == 3:
+        print("3 point")
+        return trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
+
+    if len(distance_map) == 2:
+        print("2 point")
+
+        distance_map.append({
+            "x": (distance_map[0]["x"] + distance_map[1]["x"])/2.0,
+            "y": (distance_map[0]["y"] + distance_map[1]["y"])/2.0,
+            "r": (distance_map[0]["r"] + distance_map[1]["r"])/2.0,
+            "var": (distance_map[0]["var"] + distance_map[1]["var"])/2.0
+
+
+        })
+
+    if len(distance_map) == 1:
+        print("1 point")
+        
+        distance_map.append({
+            "x": distance_map[0]["x"] + 0.1,
+            "y": distance_map[0]["y"] + 0.1,
+            "r": distance_map[0]["r"],
+            "var": distance_map[0]["var"]
+        })
+
+    return trilateration([distance_map[i] for i in [0,1,2]], room, shapes)

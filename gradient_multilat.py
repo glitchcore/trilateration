@@ -3,14 +3,12 @@ import math
 import plotly.io as pio
 import plotly.graph_objects as go
 
-from trilateration_utils import *
+from .trilateration_utils import *
 
 import numpy as np
 import tensorflow as tf
 
 tilateration_debug = False
-
-SET_SIZE = 4
 
 def trilateration(distance_map, room, shapes):
     beacons_x = [distance_map_item["x"] for distance_map_item in distance_map]
@@ -21,9 +19,9 @@ def trilateration(distance_map, room, shapes):
     x = tf.Variable([0], dtype=tf.float32)
     y = tf.Variable([0], dtype=tf.float32)
 
-    X = tf.placeholder(tf.float32, [SET_SIZE, ])
-    Y = tf.placeholder(tf.float32, [SET_SIZE, ])
-    R = tf.placeholder(tf.float32, [SET_SIZE, ])
+    X = tf.placeholder(tf.float32, [len(beacons_x), ])
+    Y = tf.placeholder(tf.float32, [len(beacons_y), ])
+    R = tf.placeholder(tf.float32, [len(beacons_r), ])
 
     cost = ((x - X) ** 2 + (y - Y) ** 2 - R ** 2) ** 2
 
@@ -33,7 +31,7 @@ def trilateration(distance_map, room, shapes):
     learning_rate = 0.001
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)
 
-    n_iter = 100
+    n_iter = 1000
     # errors = []
 
     err = []
@@ -48,7 +46,7 @@ def trilateration(distance_map, room, shapes):
         # errors.append(err)
         avg_error = (sum(err) / float(len(err))) ** 0.5
         if avg_error < 0.2:
-            # print(sum(err))
+            print(sum(err))
             break
 
     
@@ -59,13 +57,19 @@ def trilateration(distance_map, room, shapes):
             R: beacons_r
         })
 
-    # print(x, y)
-
     avg_error = (sum(err) / float(len(err))) ** 0.5
 
     avg_error += max(beacons_var)
 
-    result = [x[0], y[0], avg_error]
+    result = [
+        0.0 if math.isnan(x[0]) else x[0].astype(float),
+        0.0 if math.isnan(y[0]) else y[0].astype(float),
+        1000.0 if math.isnan(avg_error) else avg_error
+    ]
+
+    # result = [result[0].astype(float), result[1].astype(float), result[2]]
+
+    print(result, sum(err))
 
     if tilateration_debug:
         shapes.append(dict(
@@ -84,14 +88,16 @@ def trilateration(distance_map, room, shapes):
 
     return result
 
-def multilateration(distance_map, room, shapes):
+def multilateration(distance_map, room, shapes, SET_SIZE=3):
+    print(distance_map)
 
-    if SET_SIZE == 3:
+    if len(distance_map) == 4:
         results = [
             trilateration([distance_map[i] for i in [1,2,3]], room, shapes),
             trilateration([distance_map[i] for i in [0,2,3]], room, shapes),
             trilateration([distance_map[i] for i in [0,1,3]], room, shapes),
-            trilateration([distance_map[i] for i in [0,1,2]], room, shapes)
+            trilateration([distance_map[i] for i in [0,1,2]], room, shapes),
+            trilateration(distance_map, room, shapes)
         ]
 
         result = sorted(results, key=lambda x: x[2])[0]

@@ -136,13 +136,8 @@ def circle_cross(oCircle1, oCircle2):
     else:
         return []
 
-A = 0.7162624467
-B = 8.195495665
-C = 0.0894828774
-ref = -59
-
-def rssi2distance(rssi):
-    return A * (rssi/ref)**B + C
+def rssi2distance(rssi, coeff):
+    return coeff["A"] * (rssi/coeff["ref"])**coeff["B"] + coeff["C"]
 
 def average_distance(distances, beacons):
     t_distances = [[distances[j][i] for j in range(len(distances))] for i in range(len(distances[0]))]
@@ -227,9 +222,9 @@ def plot_shapes(name, beacons=[], shapes=[]):
     fig.update_layout(shapes=shapes)
     fig.update_layout(width=800, height=800)
 
-    # fig.show()
+    fig.show()
 
-    fig.write_image(name + ".png")
+    # fig.write_image(name + ".png")
 
 def get_measurement_data(measurement_id, beacons, AVERAGING_STEP = 5):
     measurements = parse_measurements("full_measurement_logs_raw", measurement_id)
